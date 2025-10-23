@@ -50,43 +50,62 @@ class book_request(BaseModel):
                              }
     }
 
-@app.get("/books")
+@app.get("/books",status_code=status.HTTP_200_OK)
 def get_books():
     return BOOKS
 
-@app.post("/books/create_book")
-def create_book(new_book: book_request):
-    nnew_book = Book(**new_book.model_dump())
-    BOOKS.append(get_id(nnew_book))
-    return BOOKS
+@app.get("/books/published_date",status_code=status.HTTP_200_OK)
+def get_published_date(published_date: int=Query(gt=1999, lt=2031)):
+    book_toReturn=[]
+    for book in BOOKS:
+        if book.published_date == published_date:
+            book_toReturn.append(book)
+    return book_toReturn
 
-@app.get("/books/ratings")
-def get_ratings(book_rating: int):
+@app.get("/books/ratings",status_code=status.HTTP_200_OK)
+def get_ratings(book_rating: int=Query(gt=0, lt=6)):
     rated_books=[]
     for book in BOOKS:
         if book.rating == book_rating:
             rated_books.append(book)
     return rated_books
 
-@app.get("/books/{book_id}")
-def get_book(book_id: int):
+@app.get("/books/{book_id},status_code=status.HTTP_200_OK")
+def get_book(book_id: int = Path(gt=0)):
     for book in BOOKS:
         if book.id == book_id:
             return book
+    raise HTTPException(status_code=404, detail="Book not found")
 
-def get_id(book: Book):
+def get_id(book: Book,status_code=status.HTTP_200_OK):
     book.id=1 if len(BOOKS) == 0 else BOOKS[-1].id+1
     return book;
 
-@app.delete("/books/{book_id}")
-def delete_book(book_id: str):
-    for book in BOOKS:
-        if book.id == book_id:
-            BOOKS.remove(book)
+@app.post("/books/create_book",status_code=status.HTTP_201_CREATED)
+def create_book(new_book: book_request):
+    nnew_book = Book(**new_book.model_dump())
+    BOOKS.append(get_id(nnew_book))
+    return BOOKS
 
-@app.put("/books/update_book")
+@app.put("/books/update_book",status_code=status.HTTP_204_NO_CONTENT)
 def update_book(update_book: book_request):
+    falg=False
     for i in range (len(BOOKS)):
         if BOOKS[i].id == update_book.id:
             BOOKS[i]= update_book
+            falg=True
             return BOOKS
+        if not falg:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+
+@app.delete("/books/{book_id}",status_code=status.HTTP_204_NO_CONTENT)
+def delete_book(book_id: int = Path(gt=0)):
+    book_deleted=False
+    for book in BOOKS:
+        if book.id == book_id:
+            BOOKS.remove(book)
+            book_deleted=True
+    if not book_deleted:
+            raise HTTPException(status_code=404, detail="Book not found")
+
